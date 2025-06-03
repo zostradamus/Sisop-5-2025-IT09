@@ -1,16 +1,21 @@
 #include "shell.h"
 #include "kernel.h"
 
+// Warna teks terminal saat ini (default abu-abu)
+int currentColor = 0x07;
+// Tambahan judul Grand Company (contoh: @Storm)
+char companyTitle[16] = "";
+
 int main() {
   clearScreen();
   shell();
 }
 
 void printString(char *str) {
-    while (*str != '\0') {
-        interrupt(0x10, 0x0E00 + *str, 0, 0, 0);        
-        str++;
-    }
+  while (*str != '\0') {
+    interrupt(0x10, 0x0E00 + *str, currentColor << 8, 0, 0);
+    str++;
+  }
 }
 
 void readString(char *buf) {
@@ -39,13 +44,17 @@ void readString(char *buf) {
   }
 }
 
-void clearScreen()
-{
+void clearScreen() {
   int i;
   for (i = 0; i < 80 * 25 * 2; i += 2) {
     putInMemory(0xB800, i, ' ');
-    putInMemory(0xB800, i + 1, 0x07); 
+    putInMemory(0xB800, i + 1, currentColor); // Gunakan currentColor, bukan 0x07
   }
-  
-  interrupt(0x10, 0x0200, 0, 0, 0);
+
+  interrupt(0x10, 0x0200, 0, 0, 0); // Pindahkan kursor ke kiri atas
 }
+
+void setColor(int color) {
+  currentColor = color;
+}
+
