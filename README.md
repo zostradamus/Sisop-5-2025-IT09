@@ -1,11 +1,11 @@
-# Sisop-5-2025-IT-Template
+# LAPORAN RESMI MODUL 5 SISOP
 
-## Kelompok
-
-Nama | NRP
---- | ---
-Amoes Noland | 5027231028
-Rafi' Afnaan Fathurrahman | 5027231040
+## ANGGOTA KELOMPOK
+| Nama                           | NRP        |
+| -------------------------------| ---------- |
+| Shinta Alya Ramadani           | 5027241016 |
+| Prabaswara Febrian Winandika   | 5027241069 |
+| Muhammad Farrel Rafli Al Fasya | 5027241075 |
 
 ## Daftar Isi
 
@@ -179,4 +179,60 @@ https://github.com/user-attachments/assets/1cfa66b1-b2f5-4e3e-a4b2-ec8b012f6fbb
 
 ## Laporan
 
-> Isi sesuai pengerjaan.
+### 🧠 Deskripsi
+
+Modul ini berfokus pada pembuatan sistem operasi sederhana dari awal menggunakan bahasa Assembly dan bahasa C. OS yang dibangun bernama EorzeOS, dijalankan menggunakan emulator Bochs, dan memiliki fitur seperti tampilan shell interaktif, pengolahan perintah (command execution), dan manajemen file dasar.
+
+### 📂 Struktur Folder
+```
+.
+├── bin/               # Berisi binary hasil kompilasi
+├── build.sh           # Script otomatisasi build
+├── bochsrc            # File konfigurasi Bochs
+├── kernel/            # File kernel utama dan interrupt
+│   └── kernel.c
+├── lib/               # Library fungsi-fungsi utilitas
+│   ├── stdio.c
+│   ├── stdlib.c
+│   └── string.c
+├── program/           # Berisi shell dan command lain
+│   └── shell.c
+├── sector-loader/     # Bootloader ASM
+│   └── bootloader.asm
+└── docs/              # Dokumentasi teknis tambahan
+```
+### ⚙️ Cara Build dan Menjalankan
+🔨 Build
+
+Untuk membangun sistem operasi :
+```
+./build.sh
+```
+Script ini akan :
+- Compile bootloader dengan nasm
+- Compile kernel dan program CLI
+- Menggabungkan semua ke dalam satu disk image (system.img)
+
+🚀 Menjalankan di Bochs
+```
+bochs -f bochsrc.txt -q
+```
+### 📝 Pembagian Tugas
+
+| Nama       | Tugas dan Kontribusi                                                                                                                         |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Shinta** | Mencoba mengerjakan modul namun mengalami kendala teknis; akhirnya fokus membantu pembuatan laporan praktik (lapres) dan dokumentasi proyek. |
+| **Ryan**   | Berhasil mengimplementasikan sebagian besar fitur hingga nomor 5 dalam soal; menjadi dasar awal pengembangan sistem.                         |
+| **Farrel** | Melengkapi seluruh fitur sesuai soal, memastikan semua berjalan sempurna, dan melakukan debugging akhir dalam demo praktikum.                |
+
+### 📚 Source Code Lengkap
+
+#### 🔹 loader.asm (Bootloader)
+```
+```
+#### 🔹 kernel.c (Kernel Dasar)
+```
+```
+#### 🔹 shell.c (Shell CLI)
+```
+```
