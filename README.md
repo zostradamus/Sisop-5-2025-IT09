@@ -221,7 +221,7 @@ bochs -f bochsrc.txt -q
 
 | Nama       | Tugas dan Kontribusi                                                                                                                         |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Shinta** | Mencoba mengerjakan modul namun mengalami kendala teknis; akhirnya fokus membantu pembuatan laporan praktik (lapres) dan dokumentasi proyek. |
+| **Shinta** | Mencoba mengerjakan modul namun mengalami kendala teknis; akhirnya fokus membantu pembuatan laporan praktik (lapres).                        |
 | **Ryan**   | Berhasil mengimplementasikan sebagian besar fitur hingga nomor 5 dalam soal; menjadi dasar awal pengembangan sistem.                         |
 | **Farrel** | Melengkapi seluruh fitur sesuai soal, memastikan semua berjalan sempurna, dan melakukan debugging akhir dalam demo praktikum.                |
 
