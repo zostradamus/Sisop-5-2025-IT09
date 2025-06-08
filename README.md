@@ -227,12 +227,396 @@ bochs -f bochsrc.txt -q
 
 ### 📚 Source Code Lengkap
 
-#### 🔹 loader.asm (Bootloader)
+#### 🔹 std_lib.c
 ```
+#include "std_lib.h"
+
+int div(int a, int b)
+{
+  int dividend = a;
+  int divisor = b;
+  int result = 0;
+  int polarity = 1;
+
+  if (divisor == 0) {
+    return 0;
+  }
+
+  if (dividend < 0) {
+    polarity = -polarity;
+    dividend = -dividend;
+  }
+  if (divisor < 0) {
+    polarity = -polarity;
+    divisor = -divisor;
+  }
+
+  while (dividend >= divisor) {
+    dividend -= divisor;
+    result++;
+  }
+
+  return result * polarity;
+}
+
+int mod(int a, int b)
+{
+  int dividend = a;
+  int divisor = b;
+
+  if (divisor == 0) {
+    return 0;
+  }
+  
+  if (divisor < 0) {
+    divisor = -divisor;
+  }
+  if (dividend < 0) {
+    while (dividend <= -divisor) {
+      dividend += divisor;
+    }
+  } else {
+    while (dividend >= divisor) {
+      dividend -= divisor;
+    }
+  }
+  
+  return dividend;
+}
+
+bool strcmp(char *str1, char *str2)
+{
+  char *s1 = str1;
+  char *s2 = str2;
+
+  while (*s1 && (*s1 == *s2)) {
+    s1++;
+    s2++;
+  }
+
+  return (*s1 == *s2);
+}
+
+void strcpy(char *dst, char *src)
+{
+  char* destination = dst;
+  char* source = src;
+  int i = 0;
+
+  for (i = 0; source[i] != '\0'; i++) {
+    destination[i] = source[i];
+  }
+  destination[i] = '\0';
+}
+
+void clear(byte *buf, unsigned int size)
+{
+  byte *buffer = buf;
+  byte *end_ptr = buffer + size;
+  
+  while (buffer < end_ptr) {
+    *buffer = 0;
+    buffer++;
+  }
+}
+
+void atoi(char *str, int *num)
+{
+  char* current_char = str;
+  int value = 0;
+  int polarity = 1;
+
+  while (*current_char == ' ') {
+    current_char++;
+  }
+
+  if (*current_char == '-') {
+    polarity = -1;
+    current_char++;
+  } else if (*current_char == '+') {
+    current_char++;
+  }
+
+  while (*current_char >= '0' && *current_char <= '9') {
+    value = (value * 10) + (*current_char - '0');
+    current_char++;
+  }
+
+  *num = value * polarity;
+}
+
+void itoa(int num, char *str)
+{
+  char* buffer_ptr = str;
+  int i = 0;
+  int j = 0;
+  bool is_negative = false;
+
+  if (num == 0) {
+    buffer_ptr[i++] = '0';
+    buffer_ptr[i] = '\0';
+    return;
+  }
+
+  if (num < 0) {
+    is_negative = true;
+    num = -num;
+  }
+
+  while (num > 0) {
+    buffer_ptr[i++] = mod(num, 10) + '0';
+    num = div(num, 10);
+  }
+
+  if (is_negative) {
+    buffer_ptr[i++] = '-';
+  }
+
+  buffer_ptr[i] = '\0';
+
+  // Reverse the string
+  for (j = 0; j < i / 2; j++) {
+    char temp = buffer_ptr[j];
+    buffer_ptr[j] = buffer_ptr[i - 1 - j];
+    buffer_ptr[i - 1 - j] = temp;
+  }
+}
 ```
-#### 🔹 kernel.c (Kernel Dasar)
+#### 🔹 kernel.c 
 ```
+#include "shell.h"
+#include "kernel.h"
+
+int main() {
+    clearScreen(0x07); // Default white background, grey text
+    shell();
+}
+
+void printString(char *str) {
+    int i = 0;
+    while (str[i] != '\0') {
+        interrupt(0x10, 0x0E00 | str[i], 0, 0, 0);
+        i++;
+    }
+}
+
+void readString(char *buf) {
+    int i = 0;
+    char ch;
+    while (1) {
+        ch = interrupt(0x16, 0, 0, 0, 0) & 0xFF;
+        if (ch == 0x0D) { // Enter key
+            buf[i] = '\0';
+            printString("\r\n");
+            return;
+        } else if (ch == 0x08) { // Backspace
+            if (i > 0) {
+                i--;
+                printString("\b \b");
+            }
+        } else {
+            buf[i] = ch;
+            interrupt(0x10, 0x0E00 | ch, 0, 0, 0);
+            i++;
+        }
+    }
+}
+
+void clearScreen(int color) {
+    int i;
+    for (i = 0; i < 80 * 25; i++) { // Loop through all 2000 character positions
+        putInMemory(0xB000, 0x8000 + (i * 2), 0x00); // Character (space)
+        putInMemory(0xB000, 0x8000 + (i * 2) + 1, color); // Attribute (color)
+    }
+    // Set cursor to top-left
+    interrupt(0x10, 0x0200, 0, 0, 0);
+}
 ```
-#### 🔹 shell.c (Shell CLI)
+#### 🔹 shell.c 
 ```
+#include "shell.h"
+#include "kernel.h"
+#include "std_lib.h"
+
+char user[64];
+char host[64];
+int currentTextColor; // Renamed for consistency with general OS terms, but functions still use it as 'color'
+
+void executeCommand(char *cmd, char arg[2][64], char *original_buf);
+void prompt(char* name);
+void randomAnswer();
+
+
+void shell() {
+    char buf[128];
+    char cmd[64];
+    char arg[2][64];
+
+    strcpy(user, "user"); // Default user
+    host[0] = '\0';       // No host initially
+    currentTextColor = 0x07; // Default white (grey text on black background)
+
+    printString("Welcome to EorzeOS!\r\n");
+
+    while (true) {
+        prompt(user);
+        readString(buf);
+        parseCommand(buf, cmd, arg);
+        executeCommand(cmd, arg, buf);
+    }
+}
+
+void prompt(char* name) {
+    printString(name);
+    if (host[0] != '\0') {
+        printString(host);
+    }
+    printString("> "); // Changed prompt symbol
+}
+
+void parseCommand(char *buf, char *cmd, char arg[2][64]) {
+    int i = 0, j = 0, k = 0;
+    int arg_idx = 0;
+
+    clear(cmd, 64);
+    clear(arg[0], 64);
+    clear(arg[1], 64);
+
+    // Skip leading whitespace
+    while (buf[i] == ' ' || buf[i] == '\r' || buf[i] == '\n') {
+        i++;
+    }
+
+    // Extract command
+    while (buf[i] != ' ' && buf[i] != '\r' && buf[i] != '\n' && buf[i] != '\0' && j < 63) {
+        cmd[j++] = buf[i++];
+    }
+    cmd[j] = '\0';
+
+    // Extract arguments
+    for (arg_idx = 0; arg_idx < 2; arg_idx++) {
+        while (buf[i] == ' ') { // Skip spaces before argument
+            i++;
+        }
+        k = 0; // Reset arg char index
+        while (buf[i] != ' ' && buf[i] != '\r' && buf[i] != '\n' && buf[i] != '\0' && k < 63) {
+            arg[arg_idx][k++] = buf[i++];
+        }
+        arg[arg_idx][k] = '\0';
+    }
+}
+
+void randomAnswer() {
+    int random_val = mod(getBiosTick(), 3); // Use mod from std_lib.h
+
+    if (random_val == 0) {
+        printString("yo\r\n");
+    } else if (random_val == 1) {
+        printString("ts unami gng </3\r\n");
+    } else {
+        printString("sygau\r\n");
+    }
+}
+
+void executeCommand(char *cmd, char arg[2][64], char *original_buf) {
+    int num1, num2, result;
+    char result_str[32]; // Buffer for integer to string conversion
+
+    if (strcmp(cmd, "yo")) {
+        printString("gurt\r\n");
+    } else if (strcmp(cmd, "gurt")) {
+        printString("yo\r\n");
+    } else if (strcmp(cmd, "user")) {
+        if (arg[0][0] == '\0') { // If no argument, set to default "user"
+            strcpy(user, "user");
+            printString("Username changed to user\r\n");
+        } else { // Set to provided username
+            strcpy(user, arg[0]);
+            printString("Username changed to ");
+            printString(user);
+            printString("\r\n");
+        }
+    } else if (strcmp(cmd, "grandcompany")) {
+        if (strcmp(arg[0], "maelstrom")) {
+            currentTextColor = 0x0C; // Merah
+            clearScreen(currentTextColor);
+            strcpy(host, "@Storm");
+        } else if (strcmp(arg[0], "twinadder")) {
+            currentTextColor = 0x0E; // Kuning
+            clearScreen(currentTextColor);
+            strcpy(host, "@Serpent");
+        } else if (strcmp(arg[0], "immortalflames")) {
+            currentTextColor = 0x01; // Biru
+            clearScreen(currentTextColor);
+            strcpy(host, "@Flame");
+        } else {
+            printString("Unknown Grand Company. Options: maelstrom, twinadder, immortalflames.\r\n");
+        }
+    } else if (strcmp(cmd, "clear")) {
+        host[0] = '\0'; // Remove Grand Company name
+        currentTextColor = 0x07; // Default white
+        clearScreen(currentTextColor);
+    } else if (strcmp(cmd, "add")) {
+        atoi(arg[0], &num1);
+        atoi(arg[1], &num2);
+        result = num1 + num2;
+        itoa(result, result_str);
+        printString(result_str);
+        printString("\r\n");
+    } else if (strcmp(cmd, "sub")) {
+        atoi(arg[0], &num1);
+        atoi(arg[1], &num2);
+        result = num1 - num2;
+        itoa(result, result_str);
+        printString(result_str);
+        printString("\r\n");
+    } else if (strcmp(cmd, "mul")) {
+        atoi(arg[0], &num1);
+        atoi(arg[1], &num2);
+        result = num1 * num2;
+        itoa(result, result_str);
+        printString(result_str);
+        printString("\r\n");
+    } else if (strcmp(cmd, "div")) {
+        atoi(arg[0], &num1);
+        atoi(arg[1], &num2);
+        if (num2 == 0) {
+            printString("Error: Division by zero is not allowed.\r\n");
+        } else {
+            result = div(num1, num2); // Use div from std_lib.h
+            itoa(result, result_str);
+            printString(result_str);
+            printString("\r\n");
+        }
+    } else if (strcmp(cmd, "yogurt")) {
+        randomAnswer();
+    } else if (cmd[0] != '\0') { // Echo command if not recognized and not empty
+        printString(original_buf); // Print the whole original buffer
+        printString("\r\n");
+    }
+}
+```
+#### 🔹 makefile
+```
+l to image..."
+	dd if=$(BDIR)/kernel.bin of=$(IMG) bs=512 seek=1 conv=notrunc >/dev/null 2>&1
+	@echo "==> Build finished: $(IMG)"
+
+
+$(BDIR)/kernel.bin: $(OBJS)
+	@echo "==> Linking object files to create kernel.bin..."
+	$(LD) -o $@ -d $^
+
+$(BDIR)/bootloader.bin: $(SDIR)/bootloader.asm
+	@echo "==> Assembling bootloader..."
+	$(NASK) -f bin $< -o $@
+
+$(BDIR)/kernel-asm.o: $(SDIR)/kernel.asm
+	@echo "==> Assembling kernel ASM ($<)..."
+	$(NASK) -f as86 $< -o $@
+
+# Rule untuk mengkompilasi file .c menjadi .o
+$(BDIR)/%.o: $(SDIR)/%.c
+	@echo "==> Compiling C source ($<)..."
+	$(BCC) $(CFLAGS) -c $< -o $@
 ```
